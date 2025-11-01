@@ -33,7 +33,11 @@ class ProductController extends Controller
             'base_price' => 'required|numeric',
             'tax_rate' => 'nullable|numeric',
             'seo' => 'nullable|array',
-            'image_url' => 'nullable|url',
+            'image_url_1' => 'nullable|url',
+            'image_url_2' => 'nullable|url',
+            'image_url_3' => 'nullable|url',
+            'image_url_4' => 'nullable|url',
+            'image_url_5' => 'nullable|url',
         ]);
 
         $product = Product::create([
@@ -54,6 +58,14 @@ class ProductController extends Controller
                 'product_id' => $product->id,
                 'url' => $validated['image_url'],
                 'position' => 1,
+            ]);
+        }
+        // ✅ FIXED: Handle image URL if provided
+        if ($request->filled('image_url_1')) {
+            ProductImage::create([
+                'product_id' => $product->id,
+                'url' => $validated['image_url_1'],
+                'position' => 2,
             ]);
         }
 
@@ -92,7 +104,11 @@ class ProductController extends Controller
             'base_price' => 'required|numeric',
             'tax_rate' => 'nullable|numeric',
             'seo' => 'nullable|array',
-            'image_url' => 'nullable|url',
+            'image_url_1' => 'nullable|url',
+            'image_url_2' => 'nullable|url',
+            'image_url_3' => 'nullable|url',
+            'image_url_4' => 'nullable|url',
+            'image_url_5' => 'nullable|url',
         ]);
 
         $product->update($validated);

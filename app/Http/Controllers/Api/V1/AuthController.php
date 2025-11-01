@@ -10,6 +10,9 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    /**
+     * Register a new user and return token
+     */
     public function register(Request $request)
     {
         $data = $request->validate([
@@ -29,9 +32,15 @@ class AuthController extends Controller
 
         $token = $user->createToken('api-token')->plainTextToken;
 
-        return response()->json(['user' => $user, 'token' => $token]);
+        return response()->json([
+            'user' => $user,
+            'token' => $token,
+        ], 201);
     }
 
+    /**
+     * Login and return token + user
+     */
     public function login(Request $request)
     {
         $data = $request->validate([
@@ -42,17 +51,63 @@ class AuthController extends Controller
         $user = User::where('email', $data['email'])->first();
 
         if (!$user || !Hash::check($data['password'], $user->password)) {
-            throw ValidationException::withMessages(['email' => ['The provided credentials are incorrect.']]);
+            throw ValidationException::withMessages([
+                'email' => ['The provided credentials are incorrect.'],
+            ]);
         }
+
+        // Optionally revoke old tokens here if you want single-session behavior:
+        // $user->tokens()->delete();
 
         $token = $user->createToken('api-token')->plainTextToken;
 
-        return response()->json(['user' => $user, 'token' => $token]);
+        return response()->json([
+            'user' => $user,
+            'token' => $token,
+        ], 200);
     }
 
+    /**
+     * Return authenticated user (for "me" endpoint)
+     */
+    public function me(Request $request)
+    {
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        return response()->json($user);
+    }
+
+    /**
+     * Logout current token (single device)
+     */
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
-        return response()->noContent();
+        $token = $request->user()?->currentAccessToken();
+
+        if ($token) {
+            $token->delete();
+            return response()->json(['message' => 'Logged out'], 200);
+        }
+
+        // in case no token (e.g., already logged out)
+        return response()->json(['message' => 'No active token found'], 200);
+    }
+
+    /**
+     * Revoke all tokens for the authenticated user (logout everywhere)
+     */
+    public function logoutAllDevices(Request $request)
+    {
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $user->tokens()->delete();
+
+        return response()->json(['message' => 'Logged out from all devices'], 200);
     }
 }
