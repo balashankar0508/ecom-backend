@@ -40,6 +40,8 @@ Route::prefix('v1')->group(function () {
     Route::get('catalog/products', [ProductController::class, 'index']);
     Route::get('catalog/products/{slug}', [ProductController::class, 'showproduct']);
     Route::get('catalog/categories', [CategoryController::class, 'index']);
+   
+
 
     // Public catalog endpoints (so storefront can fetch items without login)
 Route::get('catalog/products', [ProductController::class, 'index']);
@@ -48,6 +50,7 @@ Route::get('catalog/categories', [CategoryController::class, 'index']);
 
 // <-- add this line:
 Route::get('catalog/categories/{slug}/products', [CategoryController::class, 'products']);
+
 
 
     // -----------------------

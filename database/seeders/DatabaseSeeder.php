@@ -82,7 +82,7 @@ class DatabaseSeeder extends Seeder
             if ($variantId) {
                 DB::table('inventory')->updateOrInsert(
                     ['variant_id' => $variantId],
-                    ['stock' => 25, 'created_at' => now(), 'updated_at' => now()]
+                    ['quantity' => 25, 'created_at' => now(), 'updated_at' => now()]
                 );
             }
         }
