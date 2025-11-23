@@ -48,7 +48,7 @@ class ProductSeeder extends Seeder
                 // add a placeholder image (change URL if you host images)
                 ProductImage::updateOrCreate(
                     ['product_id' => $product->id, 'position' => 1],
-                    ['url' => 'https://via.placeholder.com/800x600?text=' . urlencode($product->title)]
+                    ['url' => 'https://placehold.co/800x600?text=' . urlencode($product->title)]
                 );
             }
         }
