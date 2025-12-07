@@ -14,7 +14,37 @@ use App\Models\Brand;
 class ProductController extends Controller
 {
     /**
-     * Display all products (optionally filtered by category or limit)
+     * --------------------------------------------
+     * AUTO CATEGORY DETECTION FUNCTION
+     * --------------------------------------------
+     */
+    private function detectCategory(string $title): ?int
+    {
+        $title = strtolower($title);
+
+        $map = [
+            'fashion' => ['shirt', 't-shirt', 'jeans', 'pants', 'dress', 'kurta', 'hoodie'],
+            'organic' => ['organic', 'honey', 'herbal', 'bio', 'juice', 'oil'],
+            'electronics' => ['phone', 'laptop', 'tv', 'earbud', 'smartwatch', 'camera'],
+        ];
+
+        foreach ($map as $slug => $keywords) {
+            foreach ($keywords as $word) {
+                if (str_contains($title, $word)) {
+                    $category = Category::where('slug', $slug)->first();
+                    return $category?->id;
+                }
+            }
+        }
+
+        return null; // no match
+    }
+
+
+    /**
+     * --------------------------------------------
+     * GET ALL PRODUCTS
+     * --------------------------------------------
      */
     public function index(Request $request): JsonResponse
     {
@@ -33,22 +63,28 @@ class ProductController extends Controller
         return response()->json(['data' => $query->get()], 200);
     }
 
+
     /**
-     * Store a newly created product
+     * --------------------------------------------
+     * CREATE PRODUCT
+     * --------------------------------------------
      */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
+            'category_id' => 'nullable|exists:categories,id',
             'brand_id' => 'nullable|exists:brands,id',
+
             'title' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:products,slug',
+            'slug' => 'nullable|string|max:255|unique:products,slug',
+
             'description' => 'nullable|string',
             'status' => 'required|in:draft,active,archived',
             'base_price' => 'required|numeric|min:0',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
             'seo' => 'nullable|array',
-            // at least 3 images required
+
+            // images
             'image_url' => 'required|url',
             'image_url_1' => 'required|url',
             'image_url_2' => 'required|url',
@@ -56,11 +92,21 @@ class ProductController extends Controller
             'image_url_4' => 'nullable|url',
         ]);
 
+        /** AUTO-SLUG */
+        $slug = $validated['slug'] ?? Str::slug($validated['title']);
+
+        /** AUTO CATEGORY DETECTION */
+        $categoryId = $validated['category_id'] ?? $this->detectCategory($validated['title']);
+        if (!$categoryId) {
+            $categoryId = 1; // fallback to master category
+        }
+
+        /** CREATE PRODUCT */
         $product = Product::create([
-            'category_id' => $validated['category_id'],
+            'category_id' => $categoryId,
             'brand_id' => $validated['brand_id'] ?? null,
             'title' => $validated['title'],
-            'slug' => $validated['slug'],
+            'slug' => $slug,
             'description' => $validated['description'] ?? null,
             'status' => $validated['status'],
             'base_price' => $validated['base_price'],
@@ -68,7 +114,7 @@ class ProductController extends Controller
             'seo' => $validated['seo'] ?? [],
         ]);
 
-        // save product images (5 slots)
+        /** SAVE IMAGES */
         $imageKeys = ['image_url', 'image_url_1', 'image_url_2', 'image_url_3', 'image_url_4'];
         $position = 1;
 
@@ -83,34 +129,43 @@ class ProductController extends Controller
         }
 
         return response()->json([
-            'message' => '✅ Product created successfully!',
+            'message' => 'Product created successfully!',
             'product' => $product->load(['brand', 'category', 'images']),
         ], 201);
     }
 
+
     /**
-     * Show a single product
+     * --------------------------------------------
+     * SHOW PRODUCT
+     * --------------------------------------------
      */
     public function show(Product $product): JsonResponse
     {
         return response()->json($product->load(['brand', 'category', 'images']));
     }
 
+
     /**
-     * Update an existing product
+     * --------------------------------------------
+     * UPDATE PRODUCT
+     * --------------------------------------------
      */
     public function update(Request $request, Product $product): JsonResponse
     {
         $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
+            'category_id' => 'nullable|exists:categories,id',
             'brand_id' => 'nullable|exists:brands,id',
+
             'title' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:products,slug,' . $product->id,
+            'slug' => 'nullable|string|max:255|unique:products,slug,' . $product->id,
+
             'description' => 'nullable|string',
             'status' => 'required|in:draft,active,archived',
             'base_price' => 'required|numeric|min:0',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
             'seo' => 'nullable|array',
+
             'image_url' => 'nullable|url',
             'image_url_1' => 'nullable|url',
             'image_url_2' => 'nullable|url',
@@ -118,11 +173,19 @@ class ProductController extends Controller
             'image_url_4' => 'nullable|url',
         ]);
 
+        $slug = $validated['slug'] ?? Str::slug($validated['title']);
+
+        /** AUTO / EXPLICIT CATEGORY UPDATE */
+        $categoryId = $validated['category_id'] ?? $this->detectCategory($validated['title']);
+        if (!$categoryId) {
+            $categoryId = $product->category_id;
+        }
+
         $product->update([
-            'category_id' => $validated['category_id'],
+            'category_id' => $categoryId,
             'brand_id' => $validated['brand_id'] ?? null,
             'title' => $validated['title'],
-            'slug' => $validated['slug'],
+            'slug' => $slug,
             'description' => $validated['description'] ?? null,
             'status' => $validated['status'],
             'base_price' => $validated['base_price'],
@@ -130,7 +193,7 @@ class ProductController extends Controller
             'seo' => $validated['seo'] ?? [],
         ]);
 
-        // If new image URLs provided, replace images
+        /** IMAGE REPLACEMENT */
         $imageKeys = ['image_url', 'image_url_1', 'image_url_2', 'image_url_3', 'image_url_4'];
         $hasNewImages = collect($imageKeys)->contains(fn($key) => !empty($request->input($key)));
 
@@ -150,28 +213,35 @@ class ProductController extends Controller
         }
 
         return response()->json([
-            'message' => '✅ Product updated successfully!',
+            'message' => 'Product updated successfully!',
             'product' => $product->fresh()->load(['brand', 'category', 'images']),
         ]);
     }
 
+
     /**
-     * Delete a product
+     * --------------------------------------------
+     * DELETE PRODUCT
+     * --------------------------------------------
      */
     public function destroy(Product $product): JsonResponse
     {
         $product->images()->delete();
         $product->delete();
 
-        return response()->json(['message' => '🗑️ Product deleted successfully!']);
+        return response()->json(['message' => 'Product deleted successfully!']);
     }
 
+
     /**
-     * Get recent products (for homepage)
+     * --------------------------------------------
+     * RECENT PRODUCTS
+     * --------------------------------------------
      */
     public function recent(Request $request): JsonResponse
     {
         $limit = $request->get('limit', 6);
+
         $products = Product::with(['images', 'category'])
             ->where('status', 'active')
             ->latest()
