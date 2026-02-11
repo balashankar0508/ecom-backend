@@ -41,12 +41,7 @@ class User extends Authenticatable
     /**
      * Automatically hash password on create/update
      */
-    public function setPasswordAttribute($value)
-    {
-        if (!empty($value)) {
-            $this->attributes['password'] = Hash::make($value);
-        }
-    }
+
 
     /**
      * Relationships

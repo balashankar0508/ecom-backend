@@ -8,16 +8,13 @@ class Address extends Model
 {
     protected $fillable = [
         'user_id',
-        'first_name',
-        'last_name',
-        'address_line_1',
-        'address_line_2',
+        'name',       // Changed from first_name/last_name
+        'phone',
+        'line1',      // Changed from address_line_1
         'city',
         'state',
         'postal_code',
-        'country',
-        'phone',
-        'is_default',
+        'type',       // New field for 'billing' or 'shipping'
     ];
 
     public function user()

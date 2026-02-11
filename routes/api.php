@@ -73,9 +73,9 @@ Route::get('catalog/categories/{slug}/products', [CategoryController::class, 'pr
         Route::post('checkout', [CheckoutController::class, 'checkout']);
         Route::post('payment/verify', [CheckoutController::class, 'verifyPayment']);
 
-        Route::get('orders', [OrderController::class, 'customerIndex']);
-        Route::get('orders/{order}', [OrderController::class, 'customerShow']);
-        Route::get('orders/{order}/invoice', [InvoiceController::class, 'download']);
+        Route::get('my-orders', [OrderController::class, 'customerIndex']);
+        Route::get('my-orders/{order}', [OrderController::class, 'customerShow']);
+        Route::get('my-orders/{order}/invoice', [InvoiceController::class, 'download']);
     });
 
     // -----------------------

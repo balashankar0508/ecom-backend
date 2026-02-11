@@ -148,6 +148,21 @@ class ProductController extends Controller
 
     /**
      * --------------------------------------------
+     * SHOW PRODUCT BY SLUG (Public)
+     * --------------------------------------------
+     */
+    public function showproduct(string $slug): JsonResponse
+    {
+        $product = Product::with(['brand', 'category', 'images'])
+            ->where('slug', $slug)
+            ->firstOrFail();
+
+        return response()->json(['data' => $product]);
+    }
+
+
+    /**
+     * --------------------------------------------
      * UPDATE PRODUCT
      * --------------------------------------------
      */
