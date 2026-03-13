@@ -14,7 +14,7 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        $categories = Category::orderBy('name')->get();
+        $categories = Category::with('parent')->orderBy('name')->get();
         return response()->json($categories);
     }
 
@@ -51,5 +51,52 @@ class CategoryController extends Controller
         $products = $q->paginate($perPage);
 
         return response()->json($products);
+    }
+
+    /**
+     * Store a newly created category in storage.
+     */
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:120',
+            'slug' => 'required|string|max:191|unique:categories',
+            'parent_id' => 'nullable|exists:categories,id',
+            'description' => 'nullable|string',
+        ]);
+        $category = Category::create($data);
+        return response()->json($category, 201);
+    }
+
+    /**
+     * Display the specified category.
+     */
+    public function show(Category $category)
+    {
+        return $category->load('parent');
+    }
+
+    /**
+     * Update the specified category in storage.
+     */
+    public function update(Request $request, Category $category)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:120',
+            'slug' => 'required|string|max:191|unique:categories,slug,' . $category->id,
+            'parent_id' => 'nullable|exists:categories,id',
+            'description' => 'nullable|string',
+        ]);
+        $category->update($data);
+        return $category;
+    }
+
+    /**
+     * Remove the specified category from storage.
+     */
+    public function destroy(Category $category)
+    {
+        $category->delete();
+        return response()->noContent();
     }
 }

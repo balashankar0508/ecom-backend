@@ -44,6 +44,28 @@ class CheckoutController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
+        // Limit pending orders to prevent spamming duplicate orders when payment is aborted
+        if ($data['payment_method'] === 'razorpay') {
+            $productIds = collect($data['items'])->pluck('id')->sort()->values()->toArray();
+            
+            $pendingOrders = Order::where('user_id', $user->id)
+                ->where('status', 'pending')
+                ->with('items')
+                ->get();
+                
+            $duplicateCount = 0;
+            foreach ($pendingOrders as $pendingOrder) {
+                $pendingProductIds = $pendingOrder->items->pluck('product_id')->sort()->values()->toArray();
+                if ($productIds === $pendingProductIds) {
+                    $duplicateCount++;
+                }
+            }
+
+            if ($duplicateCount >= 2) {
+                return response()->json(['error' => 'You have multiple pending orders for these exact items. Please view your orders to complete payment or cancel them before placing a new one.'], 400);
+            }
+        }
+
         // 2. Calculate Totals from Database (Secure)
         $subtotal = 0;
         $orderItemsData = [];
@@ -139,7 +161,7 @@ class CheckoutController extends Controller
 
         $payment = Payment::create([
             'order_id' => $order->id,
-            'provider' => $data['payment_method'],
+            'payment_method' => $data['payment_method'], // Fixed key
             'amount' => $total,
             'currency' => 'INR',
             'status' => 'pending',
@@ -215,5 +237,61 @@ class CheckoutController extends Controller
         $order->save();
 
         return response()->json(['order' => $order, 'message' => 'Payment successful']);
+    }
+
+    public function retryPayment(Request $request, Order $order)
+    {
+        $user = $request->user();
+        
+        // Ensure user owns the order and it's pending
+        if (!$user || $order->user_id !== $user->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if ($order->status !== 'pending') {
+            return response()->json(['error' => 'Order is not in pending state'], 400);
+        }
+
+        $razorpayKey = env('RAZORPAY_KEY');
+        $razorpaySecret = env('RAZORPAY_SECRET');
+
+        if (!$razorpayKey || !$razorpaySecret) {
+            return response()->json(['error' => 'Razorpay configuration missing'], 500);
+        }
+
+        // We need an existing payment record, or we create one if COD was changed to Razorpay
+        $payment = $order->payment()->first();
+        if (!$payment) {
+            $payment = Payment::create([
+                'order_id' => $order->id,
+                'payment_method' => 'razorpay',
+                'amount' => $order->total,
+                'currency' => 'INR',
+                'status' => 'pending',
+            ]);
+        } else {
+            $payment->update(['payment_method' => 'razorpay']);
+        }
+
+        // Create a new Razorpay Order ID for retry
+        $api = new Api($razorpayKey, $razorpaySecret);
+        $rzpOrder = $api->order->create([
+            'amount' => (int)($order->total * 100), // Paise
+            'currency' => 'INR',
+            'receipt' => (string)$order->id,
+        ]);
+        
+        $payment->intent_id = $rzpOrder['id'];
+        $payment->save();
+
+        return response()->json([
+            'order' => $order,
+            'razorpay_order_id' => $rzpOrder['id'],
+            'razorpay_key' => $razorpayKey,
+            'amount' => (int)($order->total * 100),
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+        ]);
     }
 }

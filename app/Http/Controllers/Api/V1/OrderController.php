@@ -44,6 +44,6 @@ class OrderController extends Controller
         if ($request->user()->id !== $order->user_id) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
-        return $order->load('items', 'payment', 'shipment', 'billingAddress', 'shippingAddress');
+        return $order->load('items.product.images', 'items.product.brand', 'payment', 'shipment', 'billingAddress', 'shippingAddress');
     }
 }

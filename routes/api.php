@@ -11,7 +11,9 @@ use App\Http\Controllers\Api\V1\ImageController;
 use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\VariantController;
+use App\Http\Controllers\Api\V1\CustomerController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -72,6 +74,11 @@ Route::get('catalog/categories/{slug}/products', [CategoryController::class, 'pr
 
         Route::post('checkout', [CheckoutController::class, 'checkout']);
         Route::post('payment/verify', [CheckoutController::class, 'verifyPayment']);
+        Route::post('payment/retry/{order}', [CheckoutController::class, 'retryPayment']);
+
+        // Reviews
+        Route::post('products/{product}/reviews', [ReviewController::class, 'store']);
+        Route::delete('reviews/{review}', [ReviewController::class, 'destroy']);
 
         Route::get('my-orders', [OrderController::class, 'customerIndex']);
         Route::get('my-orders/{order}', [OrderController::class, 'customerShow']);
@@ -91,6 +98,7 @@ Route::get('catalog/categories/{slug}/products', [CategoryController::class, 'pr
             ->only(['index', 'store', 'destroy', 'update']);
         Route::apiResource('coupons', CouponController::class);
         Route::apiResource('orders', OrderController::class)->only(['index', 'show', 'update']);
+        Route::apiResource('customers', CustomerController::class)->only(['index', 'show']);
 
         Route::get('dashboard/kpis', [DashboardController::class, 'kpis']);
         Route::get('dashboard/sales-by-day', [DashboardController::class, 'salesByDay']);

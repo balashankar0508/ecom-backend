@@ -48,5 +48,19 @@ class Product extends Model
     {
         return $this->hasMany(ProductVariant::class);
     }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    // Computed property for easy access to the consolidated rating
+    public function getAverageRatingAttribute()
+    {
+        return $this->reviews()->avg('rating') ?? 0;
+    }
+
+    // Automatically append this attribute to array/json responses
+    protected $appends = ['average_rating'];
 }
 ?>
